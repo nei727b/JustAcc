@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JustAcc — บัญชีแค่นี้ชิลล์ ๆ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;700&display=swap');
+        body { font-family: 'IBM Plex Sans Thai', sans-serif; }
+        .view { display: none; }
+        .view.active { display: block; }
+        /* Secret button style */
+        #teacher-btn { position: fixed; bottom: 10px; right: 10px; width: 40px; height: 40px; opacity: 0.05; cursor: pointer; }
+        #teacher-btn:hover { opacity: 0.5; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- ======================= STUDENT VIEW ======================= -->
+    <div id="student-view" class="view active">
+        <header class="bg-white shadow-md sticky top-0 z-10">
+            <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-teal-600">JustAcc 🎮</h1>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <p id="student-name-display" class="font-semibold">นักเรียนนิรนาม</p>
+                        <p class="text-xs text-slate-500">Level 1: Newbie Accountant</p>
+                    </div>
+                    <div class="w-10 h-10 bg-amber-300 rounded-full flex items-center justify-center font-bold text-amber-800">
+                        ก
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <!-- Left Sidebar: Chapters -->
+                <aside class="md:col-span-1">
+                    <h2 class="text-lg font-bold mb-4">บทเรียนทั้งหมด</h2>
+                    <ul id="chapter-list" class="space-y-2">
+                        <!-- Chapters will be injected by JS -->
+                    </ul>
+                </aside>
+
+                <!-- Main Content -->
+                <section id="main-content" class="md:col-span-3 bg-white p-8 rounded-xl shadow-lg">
+                    <!-- Content will be injected by JS -->
+                    <div id="welcome-screen" class="text-center">
+                        <h2 class="text-3xl font-bold mb-2">ยินดีต้อนรับสู่ JustAcc!</h2>
+                        <p class="text-slate-600">เลือกบทเรียนจากด้านซ้ายเพื่อเริ่มการผจญภัยในโลกบัญชีได้เลย!</p>
+                        <img src="https://i.imgur.com/Wb2ZCDg.png" alt="Accounting Mascot" class="mx-auto mt-8 w-64">
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- ======================= TEACHER DASHBOARD VIEW ======================= -->
+    <div id="teacher-view" class="view">
+        <div class="container mx-auto p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-slate-800">Teacher Dashboard 🧑‍🏫</h1>
+                <button onclick="switchView('student-view')" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg flex items-center">
+                    <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i>
+                    กลับไปหน้าหลัก
+                </button>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-bold mb-4">ตารางคะแนนนักเรียน (Mock Data)</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="py-3 px-4 text-left font-semibold text-sm">ชื่อ-นามสกุล</th>
+                                <th class="py-3 px-4 text-left font-semibold text-sm">บทที่</th>
+                                <th class="py-3 px-4 text-center font-semibold text-sm">คะแนน</th>
+                                <th class="py-3 px-4 text-center font-semibold text-sm">เกรด</th>
+                                <th class="py-3 px-4 text-center font-semibold text-sm">ตรวจงาน</th>
+                                <th class="py-3 px-4 text-center font-semibold text-sm">แก้ไข</th>
+                            </tr>
+                        </thead>
+                        <tbody id="score-table-body">
+                            <!-- Scores will be injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secret button to switch to teacher view -->
+    <div id="teacher-btn" onclick="switchView('teacher-view')"></div>
+
+    <script>
+        // ======================= CORE LOGIC & STATE MANAGEMENT =======================
+        let db;
+        let studentData = {
+            name: 'นักเรียนนิรนาม',
+            level: 1,
+            xp: 0,
+            scores: {} // { chapterId: score }
+        };
+
+        // Fetch database and initialize the app
+        async functioninitializeApp() {
+            try {
+                const response = await fetch('./database.json');
+                if (!response.ok) throw new Error('Network response was not ok');
+                db = await loadDatabase();
+                loadStudentData();
+                renderChapterList();
+                renderTeacherDashboard();
+                lucide.createIcons();
+            } catch (error) {
+                document.getElementById('main-content').innerHTML = `<p class="text-red-500">Error: ไม่สามารถโหลดไฟล์ database.json ได้ โปรดตรวจสอบว่าไฟล์อยู่ในตำแหน่งที่ถูกต้อง</p>`;
+                console.error('Failed to load database:', error);
+            }
+        }
+        
+        async function loadDatabase() {
+            // In a real app, this would be an API call. Here we simulate it.
+            const response = await fetch('database.json?v=' + new Date().getTime()); // Cache busting
+            return await response.json();
+        }
+
+        // ======================= VIEW SWITCHING LOGIC =======================
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        // ======================= DATA PERSISTENCE (LocalStorage) =======================
+        function saveStudentData() {
+            localStorage.setItem('justAccStudentData', JSON.stringify(studentData));
+        }
+
+        function loadStudentData() {
+            const savedData = localStorage.getItem('justAccStudentData');
+            if (savedData) {
+                studentData = JSON.parse(savedData);
+            }
+            updateStudentProfile();
+        }
+        
+        function updateStudentProfile() {
+            const nameDisplay = document.getElementById('student-name-display');
+            if(nameDisplay) {
+                nameDisplay.textContent = studentData.name;
+                const initial = studentData.name.charAt(0) || 'น';
+                document.querySelector('.w-10.h-10.bg-amber-300').textContent = initial;
+            }
+        }
+
+        // ======================= STUDENT VIEW RENDERING =======================
+        function renderChapterList() {
+            const chapterList = document.getElementById('chapter-list');
+            if (!db || !db.chapters) return;
+            chapterList.innerHTML = db.chapters.map(chapter => `
+                <li>
+                    <a href="#" onclick="renderChapterContent(${chapter.id})" class="flex items-center justify-between p-3 rounded-lg hover:bg-teal-100 transition-colors">
+                        <span class="font-medium">บทที่ ${chapter.id}: ${chapter.title}</span>
+                        <i data-lucide="chevron-right" class="h-5 w-5 text-teal-500"></i>
+                    </a>
+                </li>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function renderChapterContent(chapterId) {
+            const chapter = db.chapters.find(c => c.id === chapterId);
+            const mainContent = document.getElementById('main-content');
+            
+            mainContent.innerHTML = `
+                <h2 class="text-3xl font-bold mb-2 text-teal-700">บทที่ ${chapter.id}: ${chapter.title}</h2>
+                <p class="text-slate-600 mb-6">${chapter.summary}</p>
+                <div class="border-t pt-6">
+                    <h3 class="text-xl font-bold mb-4">Interactive Worksheet</h3>
+                    <p class="mb-4">ได้เวลาทดสอบความเข้าใจ! เลือกความยากแล้วลุยเลย</p>
+                    <div class="flex space-x-2 mb-6">
+                        <button onclick="startExercise(${chapter.id}, 'easy')" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">ง่าย</button>
+                        <button onclick="startExercise(${chapter.id}, 'medium')" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">ปานกลาง</button>
+                        <button onclick="startExercise(${chapter.id}, 'hard')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">ยาก</button>
+                    </div>
+                    <div id="exercise-container"></div>
+                </div>
+            `;
+        }
+        
+        function startExercise(chapterId, difficulty) {
+            const chapter = db.chapters.find(c => c.id === chapterId);
+            const questionBank = chapter.questionBank[difficulty];
+            if (!questionBank || questionBank.length === 0) {
+                document.getElementById('exercise-container').innerHTML = `<p class="text-orange-500">ขออภัย! ยังไม่มีโจทย์ในระดับความยากนี้</p>`;
+                return;
+            }
+
+            // Randomly pick a question
+            const question = questionBank[Math.floor(Math.random() * questionBank.length)];
+
+            const exerciseContainer = document.getElementById('exercise-container');
+            exerciseContainer.innerHTML = `
+                <div class="bg-slate-100 p-6 rounded-lg">
+                    <div class="mb-4">
+                        <label for="studentNameInput" class="block text-sm font-medium text-slate-700 mb-1">กรุณากรอกชื่อ-นามสกุลเพื่อเริ่ม:</label>
+                        <input type="text" id="studentNameInput" value="${studentData.name === 'นักเรียนนิรนาม' ? '' : studentData.name}" class="w-full md:w-1/2 p-2 border border-slate-300 rounded-md" placeholder="เช่น สมชาย ใจดี">
+                    </div>
+                    <p class="font-semibold mb-2">สถานการณ์:</p>
+                    <p class="bg-white p-4 rounded-md mb-4">${question.scenario}</p>
+                    <p class="font-semibold mb-2">${question.question}</p>
+                    <form id="answer-form" data-question-id="${question.id}" data-chapter-id="${chapterId}" data-difficulty="${difficulty}">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="font-bold">เดบิต (Dr.)</label>
+                                <input type="text" name="debit_account" class="w-full p-2 border border-slate-300 rounded-md mt-1" placeholder="ชื่อบัญชี">
+                                <input type="number" name="debit_amount" class="w-full p-2 border border-slate-300 rounded-md mt-2" placeholder="จำนวนเงิน">
+                            </div>
+                            <div>
+                                <label class="font-bold">เครดิต (Cr.)</label>
+                                <input type="text" name="credit_account" class="w-full p-2 border border-slate-300 rounded-md mt-1" placeholder="ชื่อบัญชี">
+                                <input type="number" name="credit_amount" class="w-full p-2 border border-slate-300 rounded-md mt-2" placeholder="จำนวนเงิน">
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded-lg">ส่งคำตอบ</button>
+                    </form>
+                    <div id="feedback-container" class="mt-4"></div>
+                </div>
+            `;
+            
+            document.getElementById('answer-form').addEventListener('submit', handleAnswerSubmit);
+        }
+        
+        function handleAnswerSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const studentNameInput = document.getElementById('studentNameInput');
+
+            if (!studentNameInput.value.trim()) {
+                alert('ใจเย็นวัยรุ่น! ใส่ชื่อก่อนสิ');
+                studentNameInput.focus();
+                return;
+            }
+            
+            studentData.name = studentNameInput.value.trim();
+            updateStudentProfile();
+            saveStudentData();
+
+            const questionId = form.dataset.questionId;
+            const chapterId = parseInt(form.dataset.chapterId);
+            const difficulty = form.dataset.difficulty;
+            
+            const chapter = db.chapters.find(c => c.id === chapterId);
+            const question = chapter.questionBank[difficulty].find(q => q.id === questionId);
+            
+            const userAnswer = {
+                debit: { account: form.elements.debit_account.value.trim(), amount: parseFloat(form.elements.debit_amount.value) },
+                credit: { account: form.elements.credit_account.value.trim(), amount: parseFloat(form.elements.credit_amount.value) }
+            };
+            
+            const correctAnswer = question.answer;
+            const feedbackContainer = document.getElementById('feedback-container');
+
+            // Simple check (can be improved with more flexible string matching)
+            const isCorrect = userAnswer.debit.account.toLowerCase().includes(correctAnswer.debit.account.split(' ')[0].toLowerCase()) &&
+                              userAnswer.debit.amount === correctAnswer.debit.amount &&
+                              userAnswer.credit.account.toLowerCase().includes(correctAnswer.credit.account.split(' ')[0].toLowerCase()) &&
+                              userAnswer.credit.amount === correctAnswer.credit.amount &&
+                              userAnswer.debit.amount === userAnswer.credit.amount; // A = L + OE check
+
+            if (isCorrect) {
+                feedbackContainer.innerHTML = `
+                    <div class="p-4 rounded-md bg-green-100 text-green-800">
+                        <h4 class="font-bold flex items-center"><i data-lucide="check-circle-2" class="h-5 w-5 mr-2"></i>ถูกต้องนะคร้าบ!</h4>
+                        <p>${question.feedback_correct}</p>
+                    </div>
+                `;
+                // Add XP, update score etc.
+            } else {
+                let errorMessage = 'พลาดไปนิด! แต่ไม่เป็นไร มาดูขั้นตอนที่ถูกต้องกัน:';
+                if(userAnswer.debit.amount !== userAnswer.credit.amount) {
+                    errorMessage = 'เฮ้! เดบิตกับเครดิตไม่เท่ากันนะ! สมการบัญชี (A=L+OE) ต้องดุลย์เสมอ ลองดูใหม่นะ';
+                }
+                
+                feedbackContainer.innerHTML = `
+                    <div class="p-4 rounded-md bg-red-100 text-red-800">
+                        <h4 class="font-bold flex items-center"><i data-lucide="x-circle" class="h-5 w-5 mr-2"></i>${errorMessage}</h4>
+                        <p class="mt-2">${question.feedback_wrong}</p>
+                        <div class="mt-4 bg-white p-3 rounded">
+                            <p class="font-semibold">เฉลยที่ถูกต้อง:</p>
+                            <p>Dr. ${correctAnswer.debit.account} ${correctAnswer.debit.amount.toLocaleString()}</p>
+                            <p class="ml-4">Cr. ${correctAnswer.credit.account} ${correctAnswer.credit.amount.toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+
+        // ======================= TEACHER VIEW RENDERING =======================
+        function renderTeacherDashboard() {
+            const scoreTableBody = document.getElementById('score-table-body');
+            if (!db || !db.teacherDashboard) return;
+            scoreTableBody.innerHTML = db.teacherDashboard.mockScores.map(score => `
+                <tr class="border-b">
+                    <td class="py-3 px-4">${score.studentName}</td>
+                    <td class="py-3 px-4">บทที่ ${score.chapter}</td>
+                    <td class="py-3 px-4 text-center">${score.score}</td>
+                    <td class="py-3 px-4 text-center font-bold">${score.grade}</td>
+                    <td class="py-3 px-4 text-center">
+                        <a href="${score.submissionUrl}" target="_blank" class="text-blue-500 hover:underline">ดูรูป</a>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <button class="text-slate-500 hover:text-slate-700">
+                            <i data-lucide="edit" class="h-4 w-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // ======================= APP INITIALIZATION =======================
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
